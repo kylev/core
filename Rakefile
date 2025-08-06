@@ -19,19 +19,7 @@ end
 #######################
 
 desc "Generate jekyll site"
-task :generate do
-  raise "### You haven't set anything up yet. First run `rake install`." unless File.directory?(source_dir)
-  puts "## Generating Site with Jekyll"
-  success = system "compass compile --css-dir #{source_dir}/stylesheets"
-  abort("Generating CSS failed") unless success
-  success = system "rake analytics_data"
-  abort("Generating analytics data failed") unless success
-  success = system "rake alerts_data"
-  abort("Generating alerts data failed") unless success
-  success = system "rake version_data"
-  abort("Generating version data failed") unless success
-  success = system "rake language_scores_data"
-  abort("Generating language scores data failed") unless success
+task :generate => [:analytics_data, :alerts_data, :version_data, :language_scores_data] do
   success = system "jekyll build"
   abort("Generating site failed") unless success
   if ENV["CONTEXT"] != 'production'
@@ -43,44 +31,12 @@ task :generate do
   public_dir
 end
 
-desc "Watch the site and regenerate when it changes"
-task :watch do
-  raise "### You haven't set anything up yet. First run `rake install`." unless File.directory?(source_dir)
-  puts "Starting to watch source with Jekyll and Compass."
-  system "compass compile --css-dir #{source_dir}/stylesheets" unless File.exist?("#{source_dir}/stylesheets/screen.css")
-  jekyllPid = Process.spawn({"OCTOPRESS_ENV"=>"preview"}, "jekyll build --watch --incremental")
-  compassPid = Process.spawn("compass watch")
-
-  trap("INT") {
-    [jekyllPid, compassPid].each { |pid| Process.kill(9, pid) rescue Errno::ESRCH }
-    exit 0
-  }
-
-  [jekyllPid, compassPid].each { |pid| Process.wait(pid) }
-end
-
 desc "preview the site in a web browser"
-task :preview, :listen do |t, args|
+task :preview, [:listen] => [:analytics_data, :alerts_data, :version_data, :language_scores_data] do |t, args|
   listen_addr = args[:listen] || '127.0.0.1'
   listen_addr = '0.0.0.0' unless ENV['DEVCONTAINER'].nil?
-  raise "### You haven't set anything up yet. First run `rake install`." unless File.directory?(source_dir)
-  puts "Starting to watch source with Jekyll and Compass."
-  puts "Now listening on http://localhost:#{server_port}"
-  system "compass compile --css-dir #{source_dir}/stylesheets" unless File.exist?("#{source_dir}/stylesheets/screen.css")
-  system "rake analytics_data"
-  system "rake version_data"
-  system "rake language_scores_data"
-  system "rake alerts_data"
-  jekyllPid = Process.spawn({"OCTOPRESS_ENV"=>"preview"}, "jekyll build -t --watch --incremental")
-  compassPid = Process.spawn("compass watch")
-  rackupPid = Process.spawn("rackup --port #{server_port} --host #{listen_addr}")
 
-  trap("INT") {
-    [jekyllPid, compassPid, rackupPid].each { |pid| Process.kill(9, pid) rescue Errno::ESRCH }
-    exit 0
-  }
-
-  [jekyllPid, compassPid, rackupPid].each { |pid| Process.wait(pid) }
+  system({"OCTOPRESS_ENV"=>"preview"}, "jekyll serve --host #{listen_addr}")
 end
 
 desc "Download data from analytics.home-assistant.io"
