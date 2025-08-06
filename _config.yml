@@ -49,6 +49,10 @@ highlighter: none
 
 plugins:
   - jekyll-toc
+  - jekyll-sass-converter
+
+sass:
+  style: compressed
 
 paginate: 10 # Posts per page on the blog index
 paginate_path: "blog/posts/:num" # Directory base for pagination URLs eg. /posts/2/
